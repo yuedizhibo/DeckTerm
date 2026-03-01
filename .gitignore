@@ -50,3 +50,6 @@ app.*.map.json
 #claude
 .claude/
 CLAUDE.md
+
+#ui
+tdesign-flutter-0.2.7/
