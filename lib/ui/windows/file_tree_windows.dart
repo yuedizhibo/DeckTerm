@@ -1,0 +1,451 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart';
+
+import '../../function/windows/storage.dart';
+import '../main/widgets/file_tree.dart';
+import '../common/context_menu_trigger.dart';
+import '../../function/clipboard/clipboard_manager.dart';
+import '../common/selection_manager.dart';
+
+import '../../function/transfer/transfer_manager.dart';
+import '../common/transfer_progress_widget.dart';
+
+/// Windows 平台文件树实现
+class FileTreeWindows extends StatefulWidget {
+  const FileTreeWindows({super.key});
+
+  @override
+  State<FileTreeWindows> createState() => _FileTreeWindowsState();
+}
+
+class _FileTreeWindowsState extends State<FileTreeWindows> {
+  List<FileSystemEntity> _drives = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDrives();
+    FileClipboardManager().addListener(_onClipboardChanged);
+    SelectionManager().addListener(_onSelectionChanged);
+  }
+
+  @override
+  void dispose() {
+    FileClipboardManager().removeListener(_onClipboardChanged);
+    SelectionManager().removeListener(_onSelectionChanged);
+    super.dispose();
+  }
+
+  void _onClipboardChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onSelectionChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadDrives() async {
+    final drives = await WindowsStorage.getDrives();
+    if (mounted) {
+      setState(() {
+        _drives = drives;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.of(context).textScaler;
+
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: TDTheme.of(context).whiteColor1,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: TDTheme.of(context).grayColor4, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TDText(
+              '此电脑',
+              style: TextStyle(
+                fontSize: textScaler.scale(TDTheme.of(context).fontTitleMedium?.size ?? 16),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          // 传输进度条 (下载任务)
+          const TransferProgressWidget(type: TransferType.download),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: TDLoading(size: TDLoadingSize.medium, text: '加载中...'))
+                : _drives.isEmpty
+                    ? const Center(child: TDEmpty(emptyText: '未找到驱动器'))
+                    : ListView.builder(
+                        itemCount: _drives.length,
+                        itemBuilder: (context, index) {
+                          return _DirectoryNode(
+                            path: _drives[index].path,
+                            name: _drives[index].path, // 显示如 "C:\"
+                            isRoot: true,
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 目录节点组件 (支持懒加载)
+class _DirectoryNode extends StatefulWidget {
+  final String path;
+  final String name;
+  final bool isRoot;
+
+  const _DirectoryNode({
+    required this.path,
+    required this.name,
+    this.isRoot = false,
+  });
+
+  @override
+  State<_DirectoryNode> createState() => _DirectoryNodeState();
+}
+
+class _DirectoryNodeState extends State<_DirectoryNode> {
+  bool _isExpanded = false;
+  bool _hasLoaded = false;
+  List<FileSystemEntity> _children = [];
+  bool _isLoading = false;
+
+  Future<void> _toggleExpand() async {
+    if (_isExpanded) {
+      setState(() => _isExpanded = false);
+      return;
+    }
+
+    setState(() {
+      _isExpanded = true;
+    });
+
+    if (!_hasLoaded) {
+      setState(() => _isLoading = true);
+      final children = await WindowsStorage.getDirectoryContent(widget.path);
+      if (mounted) {
+        setState(() {
+          _children = children;
+          _hasLoaded = true;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.of(context).textScaler;
+    final theme = TDTheme.of(context);
+    final isSelected = SelectionManager().isSelected(widget.path, 'local');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ContextMenuTrigger(
+          onTrigger: (position) {
+            SelectionManager().select(widget.path, 'local');
+            _showContextMenu(context, position);
+          },
+          child: InkWell(
+            onTap: () {
+              SelectionManager().select(widget.path, 'local');
+              _toggleExpand();
+            },
+            child: Container(
+              color: isSelected ? theme.brandColor1 : null, // 选中背景色
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    _isExpanded ? TDIcons.caret_down_small : TDIcons.caret_right_small,
+                    size: textScaler.scale(16),
+                    color: theme.grayColor6,
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    widget.isRoot ? TDIcons.server : (_isExpanded ? TDIcons.folder_open : TDIcons.folder),
+                    size: textScaler.scale(18),
+                    color: widget.isRoot ? theme.brandNormalColor : theme.warningNormalColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TDText(
+                      widget.name,
+                      style: TextStyle(
+                        fontSize: textScaler.scale(theme.fontBodyMedium?.size ?? 14),
+                        color: isSelected ? theme.brandNormalColor : null, // 选中文字颜色
+                        fontWeight: isSelected ? FontWeight.w500 : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_isExpanded)
+          if (_isLoading)
+            Padding(
+              padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
+              child: TDText(
+                '加载中...',
+                style: TextStyle(
+                  fontSize: textScaler.scale(12),
+                  color: theme.grayColor6,
+                ),
+              ),
+            )
+          else if (_children.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
+              child: TDText(
+                '(空)',
+                style: TextStyle(
+                  fontSize: textScaler.scale(12),
+                  color: theme.grayColor5,
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: Column(
+                children: _children.map((entity) {
+                  final name = entity.path.split(Platform.pathSeparator).last;
+                  if (entity is Directory) {
+                    return _DirectoryNode(path: entity.path, name: name);
+                  } else {
+                    return _FileNode(path: entity.path, name: name);
+                  }
+                }).toList(),
+              ),
+            ),
+      ],
+    );
+  }
+
+  void _showContextMenu(BuildContext context, Offset position) {
+    final clipboard = FileClipboardManager();
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: [
+        const PopupMenuItem(
+          height: 32,
+          value: 'refresh',
+          child: Row(
+            children: [
+              Icon(TDIcons.refresh, size: 16),
+              SizedBox(width: 8),
+              Text('刷新', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        if (clipboard.hasItem)
+          const PopupMenuItem(
+            height: 32,
+            value: 'paste',
+            child: Row(
+              children: [
+                Icon(TDIcons.assignment_checked, size: 16),
+                SizedBox(width: 8),
+                Text('粘贴', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+      ],
+    ).then((value) async {
+      if (value == 'refresh') {
+        setState(() {
+          _isExpanded = false;
+          _hasLoaded = false;
+          _isLoading = true;
+        });
+        _toggleExpand(); // 重新加载
+      } else if (value == 'paste') {
+        try {
+          await clipboard.paste(widget.path, FileSourceType.local);
+          if (context.mounted) {
+            TDToast.showSuccess('粘贴成功', context: context);
+            setState(() {
+              _isExpanded = false;
+              _hasLoaded = false;
+              _isLoading = true;
+            });
+            _toggleExpand(); // 刷新
+          }
+        } catch (e) {
+          if (context.mounted) {
+            TDToast.showFail('粘贴失败: $e', context: context);
+          }
+        }
+      }
+    });
+  }
+}
+
+/// 文件节点组件
+class _FileNode extends StatelessWidget {
+  final String path;
+  final String name;
+
+  const _FileNode({required this.path, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.of(context).textScaler;
+    final theme = TDTheme.of(context);
+    final isSelected = SelectionManager().isSelected(path, 'local');
+
+    return ContextMenuTrigger(
+      onTrigger: (position) {
+        SelectionManager().select(path, 'local');
+        _showContextMenu(context, position);
+      },
+      child: InkWell(
+        onTap: () {
+          SelectionManager().select(path, 'local');
+          // TODO: 处理文件点击，如打开文件
+          debugPrint('Clicked file: $path');
+        },
+        child: Container(
+          color: isSelected ? theme.brandColor1 : null,
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          child: Row(
+            children: [
+              const SizedBox(width: 20), // 对齐缩进
+              Icon(
+                _getFileIcon(name),
+                size: textScaler.scale(16),
+                color: theme.grayColor6,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TDText(
+                  name,
+                  style: TextStyle(
+                    fontSize: textScaler.scale(theme.fontBodyMedium?.size ?? 14),
+                    color: isSelected ? theme.brandNormalColor : (theme.fontBodyMedium != null ? theme.textColorPrimary : null),
+                    fontWeight: isSelected ? FontWeight.w500 : null,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showContextMenu(BuildContext context, Offset position) {
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: [
+        const PopupMenuItem(
+          height: 32,
+          value: 'copy',
+          child: Row(
+            children: [
+              Icon(TDIcons.file_copy, size: 16),
+              SizedBox(width: 8),
+              Text('复制', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          height: 32,
+          value: 'cut',
+          child: Row(
+            children: [
+              Icon(TDIcons.cut, size: 16),
+              SizedBox(width: 8),
+              Text('剪切', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          height: 32,
+          value: 'open',
+          child: Row(
+            children: [
+              Icon(TDIcons.link, size: 16),
+              SizedBox(width: 8),
+              Text('打开', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          height: 32,
+          value: 'properties',
+          child: Row(
+            children: [
+              Icon(TDIcons.info_circle, size: 16),
+              SizedBox(width: 8),
+              Text('属性', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'copy') {
+        FileClipboardManager().copyLocal(path, name, false);
+        TDToast.showSuccess('已复制', context: context);
+      } else if (value == 'cut') {
+        FileClipboardManager().cutLocal(path, name, false);
+        TDToast.showSuccess('已剪切', context: context);
+      }
+    });
+  }
+
+  IconData _getFileIcon(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'dart': case 'java': case 'kt': case 'cs': case 'py': case 'js': case 'ts': return TDIcons.code;
+      case 'jpg': case 'jpeg': case 'png': case 'gif': case 'bmp': case 'svg': return TDIcons.image;
+      case 'pdf': return TDIcons.file_pdf;
+      case 'doc': case 'docx': case 'txt': case 'md': return TDIcons.file_word;
+      case 'xls': case 'xlsx': return TDIcons.file_excel;
+      case 'ppt': case 'pptx': return TDIcons.file_powerpoint;
+      case 'mp3': case 'wav': case 'flac': return TDIcons.sound;
+      case 'mp4': case 'avi': case 'mkv': case 'mov': return TDIcons.video;
+      case 'zip': case 'rar': case '7z': case 'tar': return TDIcons.file_zip;
+      case 'exe': case 'bat': case 'cmd': case 'sh': return TDIcons.setting;
+      default: return TDIcons.file;
+    }
+  }
+}
