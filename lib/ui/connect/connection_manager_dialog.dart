@@ -15,14 +15,22 @@ class ConnectionManagerDialog extends StatefulWidget {
 
 class _ConnectionManagerDialogState extends State<ConnectionManagerDialog> {
   final ConnectionManager _manager = ConnectionManager();
+  final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
   Connection? _editing;
   bool _showForm = false; // true: 显示新建/编辑表单；false: 显示连接列表
+  String _searchText = '';
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -32,6 +40,40 @@ class _ConnectionManagerDialogState extends State<ConnectionManagerDialog> {
         _isLoading = false;
       });
     }
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {
+      _searchText = value.trim();
+    });
+  }
+
+  /// 按搜索文本过滤并排序连接列表：
+  /// 1. 完美匹配（名称或 IP 与关键字完全一致）
+  /// 2. 包含关键字（名称或 IP 包含关键字）
+  /// 3. 其余（不匹配，排在末尾）
+  List<Connection> _getFilteredConnections() {
+    final all = _manager.connections;
+    if (_searchText.isEmpty) return all;
+
+    final query = _searchText.toLowerCase();
+    final perfectMatch = <Connection>[];
+    final contains = <Connection>[];
+    final rest = <Connection>[];
+
+    for (final conn in all) {
+      final name = conn.name.toLowerCase();
+      final host = conn.host.toLowerCase();
+      if (name == query || host == query) {
+        perfectMatch.add(conn);
+      } else if (name.contains(query) || host.contains(query)) {
+        contains.add(conn);
+      } else {
+        rest.add(conn);
+      }
+    }
+
+    return [...perfectMatch, ...contains, ...rest];
   }
 
   void _openForm([Connection? connection]) {
@@ -117,9 +159,12 @@ class _ConnectionManagerDialogState extends State<ConnectionManagerDialog> {
                                 children: [
                                   Expanded(
                                     child: TDInput(
+                                      controller: _searchController,
                                       leftIcon: const Icon(TDIcons.search),
                                       hintText: '搜索连接...',
                                       backgroundColor: TDTheme.of(context).grayColor1,
+                                      onChanged: _onSearchChanged,
+                                      onSubmitted: _onSearchChanged,
                                     ),
                                   ),
                                   const SizedBox(width: 16),
@@ -133,22 +178,35 @@ class _ConnectionManagerDialogState extends State<ConnectionManagerDialog> {
                               ),
                             ),
                             Expanded(
-                              child: _manager.connections.isEmpty
-                                  ? const Center(
+                              child: Builder(
+                                builder: (context) {
+                                  final filtered = _getFilteredConnections();
+                                  if (_manager.connections.isEmpty) {
+                                    return const Center(
                                       child: TDEmpty(
                                         type: TDEmptyType.plain,
                                         emptyText: '暂无连接，请新建',
                                       ),
-                                    )
-                                  : ListView.separated(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                      itemCount: _manager.connections.length,
-                                      separatorBuilder: (context, index) => const SizedBox(height: 12),
-                                      itemBuilder: (context, index) {
-                                        final conn = _manager.connections[index];
-                                        return _buildConnectionItem(conn);
-                                      },
-                                    ),
+                                    );
+                                  }
+                                  if (filtered.isEmpty) {
+                                    return const Center(
+                                      child: TDEmpty(
+                                        type: TDEmptyType.plain,
+                                        emptyText: '未找到匹配的连接',
+                                      ),
+                                    );
+                                  }
+                                  return ListView.separated(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    itemCount: filtered.length,
+                                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                                    itemBuilder: (context, index) {
+                                      return _buildConnectionItem(filtered[index]);
+                                    },
+                                  );
+                                },
+                              ),
                             ),
                           ],
                         ),

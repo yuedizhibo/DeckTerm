@@ -12,6 +12,11 @@ class DeviceMonitor {
   // Polling key: Host IP
   final Map<String, Timer> _pollingTimers = {};
   final Map<String, SSHClient> _pollingClients = {};
+
+  // 防止对同一个 host 重复发起连接（重连期间不再触发新的重连）
+  final Set<String> _reconnecting = {};
+  // 防止对同一个 host 重复调度单次重试 poll（避免失败雪崩）
+  final Set<String> _retryingPoll = {};
   
   // Status storage: Host IP -> DeviceInfo
   final Map<String, DeviceInfo> _deviceStatuses = {};
@@ -86,6 +91,10 @@ class DeviceMonitor {
   }
 
   Future<void> _startIndependentMonitoring(String host, TerminalSession session) async {
+    // 防止对同一 host 并发触发多次连接
+    if (_reconnecting.contains(host)) return;
+    _reconnecting.add(host);
+
     try {
       final socket = await SSHSocket.connect(
         session.host,
@@ -98,38 +107,67 @@ class DeviceMonitor {
         username: session.username ?? 'root',
         onPasswordRequest: () => session.password,
       );
-      
+
       await client.authenticated;
       _pollingClients[host] = client;
-      
+      _reconnecting.remove(host);
+
       // Start polling loop
       _pollingTimers[host] = Timer.periodic(const Duration(seconds: 5), (_) => _pollDevice(host));
-      
+
       // Immediate first poll
       _pollDevice(host);
-      
+
     } catch (e) {
+      _reconnecting.remove(host);
       _updateStatus(host, DeviceStatusType.failed);
-      // Retry logic could be added here if needed
+      // 连接失败：1 秒后自动重连
+      _scheduleReconnect(host);
     }
+  }
+
+  /// 1 秒后重新发起连接。
+  /// 仅在 host 仍被引用、且当前没有连接进行中时执行。
+  void _scheduleReconnect(String host) {
+    if (!_sessionRefs.containsKey(host)) return;  // host 已被移除，不再重连
+    if (_reconnecting.contains(host)) return;      // 已有重连在进行中
+
+    Future.delayed(const Duration(seconds: 1), () {
+      // 延迟结束后再次检查：session 可能已被关闭，或重连已由其他路径发起
+      if (!_sessionRefs.containsKey(host)) return;
+      if (_reconnecting.contains(host)) return;
+      if (_pollingTimers.containsKey(host)) return; // 已恢复轮询，无需重连
+
+      final config = _hostConfigs[host];
+      if (config != null) _startIndependentMonitoring(host, config);
+    });
   }
 
   void _stopPolling(String host) {
     _pollingTimers[host]?.cancel();
     _pollingTimers.remove(host);
-    
+
     _pollingClients[host]?.close();
     _pollingClients.remove(host);
-    
+
+    // 清理重试状态：延迟回调执行前会检查 _sessionRefs，host 已移除所以不会有副作用
+    _reconnecting.remove(host);
+    _retryingPoll.remove(host);
+
     _deviceStatuses.remove(host);
     _notify();
   }
 
   Future<void> _pollDevice(String host) async {
     final client = _pollingClients[host];
+
+    // 连接已断开：停止轮询，触发重连
     if (client == null || client.isClosed) {
       _updateStatus(host, DeviceStatusType.failed);
-      // Attempt reconnection if needed? For now, just mark failed.
+      _pollingTimers[host]?.cancel();
+      _pollingTimers.remove(host);
+      _pollingClients.remove(host);
+      _scheduleReconnect(host);
       return;
     }
 
@@ -150,6 +188,16 @@ class DeviceMonitor {
       _notify();
     } catch (e) {
       _updateStatus(host, DeviceStatusType.failed);
+
+      // 命令执行失败：1 秒后重试本次查询。
+      // 用 _retryingPoll 防止在 5s 轮询窗口内重复积累重试。
+      if (!_retryingPoll.contains(host)) {
+        _retryingPoll.add(host);
+        Future.delayed(const Duration(seconds: 1), () {
+          _retryingPoll.remove(host);
+          if (_sessionRefs.containsKey(host)) _pollDevice(host);
+        });
+      }
     }
   }
 
