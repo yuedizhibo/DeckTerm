@@ -7,6 +7,7 @@ import '../../function/android/storage.dart';
 import '../common/context_menu_trigger.dart';
 import '../../function/clipboard/clipboard_manager.dart';
 import '../common/selection_manager.dart';
+import '../main/widgets/file_tree.dart';
 
 /// Android 平台本地文件树组件
 class FileTreeAndroid extends StatefulWidget {
@@ -18,6 +19,7 @@ class FileTreeAndroid extends StatefulWidget {
 
 class _FileTreeAndroidState extends State<FileTreeAndroid> {
   List<FileSystemEntity> _roots = [];
+  List<QuickAccessEntry> _quickAccessEntries = [];
   bool _isLoading = true;
 
   @override
@@ -46,9 +48,22 @@ class _FileTreeAndroidState extends State<FileTreeAndroid> {
   Future<void> _loadRoots() async {
     setState(() => _isLoading = true);
     final roots = await AndroidStorage.getRootDirectories();
+    // 解析快速访问路径，过滤掉实际不存在的目录
+    final rawPaths = AndroidStorage.getQuickAccessPaths();
+    final entries = <QuickAccessEntry>[];
+    for (final entry in rawPaths.entries) {
+      if (await Directory(entry.value).exists()) {
+        entries.add(QuickAccessEntry(
+          label: entry.key,
+          icon: TDIcons.download,
+          path: entry.value,
+        ));
+      }
+    }
     if (mounted) {
       setState(() {
         _roots = roots;
+        _quickAccessEntries = entries;
         _isLoading = false;
       });
     }
@@ -109,11 +124,27 @@ class _FileTreeAndroidState extends State<FileTreeAndroid> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(8),
-              children: _roots.map((root) => _DirectoryNode(
-                path: root.path,
-                name: '内部存储', // Android 主存储通常显示为 Internal Storage
-                isRoot: true,
-              )).toList(),
+              children: [
+                // 快速访问区
+                if (_quickAccessEntries.isNotEmpty) ...[
+                  const QuickAccessSectionHeader(),
+                  ..._quickAccessEntries.map((e) => _DirectoryNode(
+                        key: ValueKey('qa_${e.path}'),
+                        path: e.path,
+                        name: e.label,
+                        customIcon: e.icon,
+                        customIconColor: e.iconColor,
+                      )),
+                  const Divider(height: 8, indent: 12, endIndent: 12),
+                ],
+                // 内部存储根目录
+                ..._roots.map((root) => _DirectoryNode(
+                      key: ValueKey('root_${root.path}'),
+                      path: root.path,
+                      name: '内部存储',
+                      isRoot: true,
+                    )),
+              ],
             ),
           ),
         ],
@@ -126,11 +157,17 @@ class _DirectoryNode extends StatefulWidget {
   final String path;
   final String name;
   final bool isRoot;
+  /// 快速访问入口的自定义图标，不传则使用默认的文件夹/存储图标
+  final IconData? customIcon;
+  final Color? customIconColor;
 
   const _DirectoryNode({
+    super.key,
     required this.path,
     required this.name,
     this.isRoot = false,
+    this.customIcon,
+    this.customIconColor,
   });
 
   @override
@@ -200,9 +237,13 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
                   ),
                   const SizedBox(width: 4),
                   Icon(
-                    widget.isRoot ? TDIcons.mobile : (_isExpanded ? TDIcons.folder_open : TDIcons.folder),
+                    widget.customIcon ??
+                        (widget.isRoot
+                            ? TDIcons.mobile
+                            : (_isExpanded ? TDIcons.folder_open : TDIcons.folder)),
                     size: 18,
-                    color: widget.isRoot ? theme.brandNormalColor : theme.warningNormalColor,
+                    color: widget.customIconColor ??
+                        (widget.isRoot ? theme.brandNormalColor : theme.warningNormalColor),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

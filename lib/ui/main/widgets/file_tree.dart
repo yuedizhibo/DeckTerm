@@ -1,6 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 
+/// 快速访问入口数据模型（平台无关，由各平台文件树 UI 实例化）
+class QuickAccessEntry {
+  final String label;
+  final IconData icon;
+  final Color? iconColor;
+  final String path;
+
+  const QuickAccessEntry({
+    required this.label,
+    required this.icon,
+    this.iconColor,
+    required this.path,
+  });
+}
+
+/// 快速访问分区标题，供 Windows 和 Android 文件树共用
+class QuickAccessSectionHeader extends StatelessWidget {
+  final String title;
+
+  const QuickAccessSectionHeader({super.key, this.title = '快速访问'});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = TDTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+      child: TDText(
+        title,
+        style: TextStyle(
+          fontSize: 11,
+          color: theme.grayColor6,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
 /// 文件节点数据模型
 class FileNode {
   final String name;

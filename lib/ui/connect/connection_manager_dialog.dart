@@ -365,15 +365,17 @@ class _ConnectionManagerDialogState extends State<ConnectionManagerDialog> {
   void _confirmDelete(Connection conn) {
     showDialog(
       context: context,
-      builder: (context) => TDAlertDialog(
+      builder: (dialogContext) => TDAlertDialog(
         title: '确认删除',
         content: '确定要删除连接 "${conn.name}" 吗？',
         rightBtn: TDDialogButtonOptions(
           title: '删除',
           theme: TDButtonTheme.danger,
-          action: () async {
-            await _manager.deleteConnection(conn.id);
-            if (mounted) _loadData();
+          action: () {
+            Navigator.of(dialogContext).pop();
+            _manager.deleteConnection(conn.id).then((_) {
+              if (mounted) _loadData();
+            });
           },
         ),
       ),

@@ -20,6 +20,7 @@ class FileTreeWindows extends StatefulWidget {
 
 class _FileTreeWindowsState extends State<FileTreeWindows> {
   List<FileSystemEntity> _drives = [];
+  List<QuickAccessEntry> _quickAccessEntries = [];
   bool _isLoading = true;
 
   @override
@@ -47,9 +48,22 @@ class _FileTreeWindowsState extends State<FileTreeWindows> {
 
   Future<void> _loadDrives() async {
     final drives = await WindowsStorage.getDrives();
+    // 解析快速访问路径，过滤掉实际不存在的目录
+    final rawPaths = WindowsStorage.getQuickAccessPaths();
+    final entries = <QuickAccessEntry>[];
+    for (final entry in rawPaths.entries) {
+      if (await Directory(entry.value).exists()) {
+        entries.add(QuickAccessEntry(
+          label: entry.key,
+          icon: entry.key == '桌面' ? TDIcons.desktop : TDIcons.download,
+          path: entry.value,
+        ));
+      }
+    }
     if (mounted) {
       setState(() {
         _drives = drives;
+        _quickAccessEntries = entries;
         _isLoading = false;
       });
     }
@@ -86,15 +100,29 @@ class _FileTreeWindowsState extends State<FileTreeWindows> {
                 ? const Center(child: TDLoading(size: TDLoadingSize.medium, text: '加载中...'))
                 : _drives.isEmpty
                     ? const Center(child: TDEmpty(emptyText: '未找到驱动器'))
-                    : ListView.builder(
-                        itemCount: _drives.length,
-                        itemBuilder: (context, index) {
-                          return _DirectoryNode(
-                            path: _drives[index].path,
-                            name: _drives[index].path, // 显示如 "C:\"
-                            isRoot: true,
-                          );
-                        },
+                    : ListView(
+                        children: [
+                          // 快速访问区
+                          if (_quickAccessEntries.isNotEmpty) ...[
+                            const QuickAccessSectionHeader(),
+                            ..._quickAccessEntries.map((e) => _DirectoryNode(
+                                  key: ValueKey('qa_${e.path}'),
+                                  path: e.path,
+                                  name: e.label,
+                                  customIcon: e.icon,
+                                  customIconColor: e.iconColor,
+                                )),
+                            const Divider(height: 8, indent: 12, endIndent: 12),
+                          ],
+                          // 驱动器列表
+                          const QuickAccessSectionHeader(title: '驱动器'),
+                          ..._drives.map((drive) => _DirectoryNode(
+                                key: ValueKey('drive_${drive.path}'),
+                                path: drive.path,
+                                name: drive.path,
+                                isRoot: true,
+                              )),
+                        ],
                       ),
           ),
         ],
@@ -108,11 +136,17 @@ class _DirectoryNode extends StatefulWidget {
   final String path;
   final String name;
   final bool isRoot;
+  /// 快速访问入口的自定义图标，不传则使用默认的文件夹/驱动器图标
+  final IconData? customIcon;
+  final Color? customIconColor;
 
   const _DirectoryNode({
+    super.key,
     required this.path,
     required this.name,
     this.isRoot = false,
+    this.customIcon,
+    this.customIconColor,
   });
 
   @override
@@ -179,9 +213,13 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
                   ),
                   const SizedBox(width: 4),
                   Icon(
-                    widget.isRoot ? TDIcons.server : (_isExpanded ? TDIcons.folder_open : TDIcons.folder),
+                    widget.customIcon ??
+                        (widget.isRoot
+                            ? TDIcons.server
+                            : (_isExpanded ? TDIcons.folder_open : TDIcons.folder)),
                     size: textScaler.scale(18),
-                    color: widget.isRoot ? theme.brandNormalColor : theme.warningNormalColor,
+                    color: widget.customIconColor ??
+                        (widget.isRoot ? theme.brandNormalColor : theme.warningNormalColor),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

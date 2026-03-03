@@ -17,6 +17,13 @@ class AndroidStorage {
     return [];
   }
 
+  /// 快速访问入口路径（显示名称 → 完整路径）
+  static Map<String, String> getQuickAccessPaths() {
+    return {
+      '下载': '/storage/emulated/0/Download',
+    };
+  }
+
   /// 获取指定目录下的内容
   static Future<List<FileSystemEntity>> getDirectoryContent(String path) async {
     final dir = Directory(path);

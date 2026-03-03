@@ -17,6 +17,17 @@ class WindowsStorage {
     return drives;
   }
 
+  /// 快速访问入口路径（显示名称 → 完整路径）
+  /// 依赖 USERPROFILE 环境变量（Windows 标准，指向当前用户目录）
+  static Map<String, String> getQuickAccessPaths() {
+    final home = Platform.environment['USERPROFILE'] ?? '';
+    if (home.isEmpty) return {};
+    return {
+      '桌面': '$home\\Desktop',
+      '下载': '$home\\Downloads',
+    };
+  }
+
   /// 获取指定目录下的内容（文件和子目录）
   static Future<List<FileSystemEntity>> getDirectoryContent(String path) async {
     final dir = Directory(path);
