@@ -80,10 +80,10 @@ class TransferManager extends ChangeNotifier {
       _tasks[index].transferredBytes = _tasks[index].totalBytes;
       _tasks[index].status = TransferStatus.completed;
       notifyListeners();
-      
-      // 延迟移除已完成任务，以便 UI 展示“完成”状态
-      Future.delayed(const Duration(seconds: 3), () {
-        _tasks.removeWhere((t) => t.id == taskId);
+
+      // 延迟移除已完成任务，留足时间在传输列表中展示”完成”状态
+      Future.delayed(const Duration(seconds: 8), () {
+        _tasks.removeWhere((t) => t.id == taskId && t.status == TransferStatus.completed);
         notifyListeners();
       });
     }
@@ -97,5 +97,17 @@ class TransferManager extends ChangeNotifier {
       _tasks[index].error = error;
       notifyListeners();
     }
+  }
+
+  // 移除单条任务（用于 UI 手动关闭）
+  void removeTask(String taskId) {
+    _tasks.removeWhere((t) => t.id == taskId);
+    notifyListeners();
+  }
+
+  // 清空所有已完成或失败的任务
+  void clearCompleted() {
+    _tasks.removeWhere((t) => t.status == TransferStatus.completed || t.status == TransferStatus.failed);
+    notifyListeners();
   }
 }

@@ -81,10 +81,16 @@
 - **`selection_manager.dart`**: 文件选择状态管理器（单例）。
   - 管理文件树（本地和远程）中的单选高亮状态。
   - 区分选中项来源（local/remote），支持点击选中和右键选中。
-- **`transfer_progress_widget.dart`**: 文件传输进度条组件。
+- **`transfer_progress_widget.dart`**: 文件传输进度条组件（轻量内嵌版，已不在主界面使用）。
   - 监听 `TransferManager` 状态，实时展示上传/下载任务列表。
   - 显示文件名、传输类型图标（上传/下载）、进度百分比/大小、以及进度条。
   - 自动过滤显示特定类型（Upload/Download）的任务。
+- **`transfer_list_dialog.dart`**: 传输列表对话框（全功能版）。
+  - 从 AppBar 传输按钮（带活跃任务数角标）点击打开。
+  - 提供全部/上传/下载三个 Tab 过滤视图。
+  - 每条任务显示：文件名、路径、进度条、已传输/总大小。
+  - 支持单条关闭（已完成/失败任务）和批量"清空已完成/失败"操作。
+  - 通过 `ListenableBuilder` 实时响应 `TransferManager` 状态变化。
 
 ### `lib/ui/connect/` (连接管理界面)
 - **`connection_manager_dialog.dart`**: 连接管理主窗口（悬浮窗）。

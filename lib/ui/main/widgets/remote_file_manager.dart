@@ -7,9 +7,7 @@ import '../models/terminal_session.dart';
 import '../../../../ui/common/context_menu_trigger.dart';
 import '../../../../function/clipboard/clipboard_manager.dart';
 import '../../../../ui/common/selection_manager.dart';
-
 import '../../../../function/transfer/transfer_manager.dart';
-import '../../../../ui/common/transfer_progress_widget.dart';
 
 /// 远程文件管理组件 (树状结构)
 class RemoteFileManager extends StatefulWidget {
@@ -154,9 +152,6 @@ class _RemoteFileManagerState extends State<RemoteFileManager> {
             ),
           ),
           const Divider(height: 1),
-          // 传输进度条 (上传任务)
-          const TransferProgressWidget(type: TransferType.upload),
-          
           // 内容区域
           Expanded(
             child: _buildContent(context, textScaler),

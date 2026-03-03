@@ -108,18 +108,18 @@ class SftpManager {
     // try { await _sftp!.stat(dir); } catch (_) { await createDirectory(dir); }
 
     final file = await _sftp!.open(remotePath, mode: SftpFileOpenMode.write | SftpFileOpenMode.create | SftpFileOpenMode.truncate);
-    
+
     try {
       int transferred = 0;
-      // 手动处理流，以便更新进度
+      int writeOffset = 0; // dartssh2 的 writeBytes 默认 offset=0，必须手动追踪
       await for (final chunk in content) {
         final bytes = Uint8List.fromList(chunk);
-        await file.writeBytes(bytes);
+        await file.writeBytes(bytes, offset: writeOffset);
+        writeOffset += bytes.length;
         transferred += bytes.length;
         onProgress?.call(transferred);
       }
     } finally {
-      // 无论成功失败，确保关闭文件句柄
       await file.close();
     }
     _cache.clear();

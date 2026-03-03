@@ -9,8 +9,6 @@ import '../common/context_menu_trigger.dart';
 import '../../function/clipboard/clipboard_manager.dart';
 import '../common/selection_manager.dart';
 
-import '../../function/transfer/transfer_manager.dart';
-import '../common/transfer_progress_widget.dart';
 
 /// Windows 平台文件树实现
 class FileTreeWindows extends StatefulWidget {
@@ -83,8 +81,6 @@ class _FileTreeWindowsState extends State<FileTreeWindows> {
             ),
           ),
           const Divider(height: 1),
-          // 传输进度条 (下载任务)
-          const TransferProgressWidget(type: TransferType.download),
           Expanded(
             child: _isLoading
                 ? const Center(child: TDLoading(size: TDLoadingSize.medium, text: '加载中...'))

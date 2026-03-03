@@ -13,7 +13,9 @@ import 'widgets/remote_file_manager.dart';
 import 'widgets/resizable_widget.dart';
 import 'widgets/terminal_tabs.dart';
 import '../connect/connection_manager_dialog.dart';
+import '../common/transfer_list_dialog.dart';
 import '../../function/monitor/device_monitor.dart';
+import '../../function/transfer/transfer_manager.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -103,6 +105,50 @@ class _WorkflowPageState extends State<WorkflowPage> {
             },
             tooltip: _isLocked ? '解锁布局' : '锁定布局',
           ),
+          // 传输列表按钮：有活跃任务时显示数量角标
+          ListenableBuilder(
+            listenable: TransferManager(),
+            builder: (context, _) {
+              final activeCount = TransferManager()
+                  .tasks
+                  .where((t) =>
+                      t.status == TransferStatus.pending ||
+                      t.status == TransferStatus.running)
+                  .length;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(TDIcons.cloud_upload),
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => const TransferListDialog(),
+                      barrierColor: Colors.black54,
+                    ),
+                    tooltip: '传输列表',
+                  ),
+                  if (activeCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text(
+                          '$activeCount',
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(TDIcons.link),
             onPressed: () async {
@@ -111,7 +157,7 @@ class _WorkflowPageState extends State<WorkflowPage> {
                 builder: (context) => const ConnectionManagerDialog(),
                 barrierColor: Colors.black54,
               );
-              
+
               if (result != null && result is TerminalSession) {
                 _connectSession(result);
               }

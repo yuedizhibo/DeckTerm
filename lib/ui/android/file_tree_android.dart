@@ -7,8 +7,6 @@ import '../../function/android/storage.dart';
 import '../common/context_menu_trigger.dart';
 import '../../function/clipboard/clipboard_manager.dart';
 import '../common/selection_manager.dart';
-import '../../function/transfer/transfer_manager.dart';
-import '../common/transfer_progress_widget.dart';
 
 /// Android 平台本地文件树组件
 class FileTreeAndroid extends StatefulWidget {
@@ -108,8 +106,6 @@ class _FileTreeAndroidState extends State<FileTreeAndroid> {
             ),
           ),
           const Divider(height: 1),
-          // 传输进度条 (下载任务)
-          const TransferProgressWidget(type: TransferType.download),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(8),
