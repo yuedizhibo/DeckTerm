@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 
+import '../../setting/app_theme.dart';
 import '../../function/android/storage.dart';
 import '../common/context_menu_trigger.dart';
 import '../../function/clipboard/clipboard_manager.dart';
@@ -80,7 +81,7 @@ class _FileTreeAndroidState extends State<FileTreeAndroid> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(TDIcons.folder_open, size: 48, color: TDTheme.of(context).grayColor4),
+            Icon(TDIcons.folder_open, size: 48, color: AppColors.of(context).text3),
             const SizedBox(height: 12),
             TDText(
               '未找到存储设备或无权限',
@@ -93,9 +94,9 @@ class _FileTreeAndroidState extends State<FileTreeAndroid> {
 
     return Container(
       decoration: BoxDecoration(
-        color: TDTheme.of(context).whiteColor1,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: TDTheme.of(context).grayColor4, width: 1),
+        border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,6 +110,7 @@ class _FileTreeAndroidState extends State<FileTreeAndroid> {
                   style: TextStyle(
                     fontSize: TDTheme.of(context).fontTitleMedium?.size,
                     fontWeight: FontWeight.bold,
+                    color: AppColors.of(context).text1,
                   ),
                 ),
                 const Spacer(),
@@ -226,7 +228,7 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
               _toggleExpand();
             },
             child: Container(
-              color: isSelected ? theme.brandColor1 : null,
+              color: isSelected ? AppColors.of(context).accentDimBg : null,
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: Row(
                 children: [
@@ -250,7 +252,7 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
                     child: TDText(
                       widget.name,
                       style: TextStyle(
-                        color: isSelected ? theme.brandNormalColor : theme.textColorPrimary,
+                        color: isSelected ? theme.brandNormalColor : AppColors.of(context).text1,
                         fontWeight: isSelected ? FontWeight.w500 : null,
                       ),
                       maxLines: 1,
@@ -393,7 +395,7 @@ class _FileNode extends StatelessWidget {
           // TODO: 打开文件
         },
         child: Container(
-          color: isSelected ? theme.brandColor1 : null,
+          color: isSelected ? AppColors.of(context).accentDimBg : null,
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
           child: Row(
             children: [
@@ -405,7 +407,7 @@ class _FileNode extends StatelessWidget {
                   name,
                   style: TextStyle(
                     fontSize: 14,
-                    color: isSelected ? theme.brandNormalColor : theme.textColorPrimary,
+                    color: isSelected ? theme.brandNormalColor : AppColors.of(context).text1,
                     fontWeight: isSelected ? FontWeight.w500 : null,
                   ),
                   maxLines: 1,

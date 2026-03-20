@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 
+import '../../setting/app_theme.dart';
 import '../../function/windows/storage.dart';
 import '../main/widgets/file_tree.dart';
 import '../common/context_menu_trigger.dart';
@@ -77,9 +78,9 @@ class _FileTreeWindowsState extends State<FileTreeWindows> {
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: TDTheme.of(context).whiteColor1,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: TDTheme.of(context).grayColor4, width: 1),
+        border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,6 +92,7 @@ class _FileTreeWindowsState extends State<FileTreeWindows> {
               style: TextStyle(
                 fontSize: textScaler.scale(TDTheme.of(context).fontTitleMedium?.size ?? 16),
                 fontWeight: FontWeight.bold,
+                color: AppColors.of(context).text1,
               ),
             ),
           ),
@@ -202,7 +204,7 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
               _toggleExpand();
             },
             child: Container(
-              color: isSelected ? theme.brandColor1 : null, // 选中背景色
+              color: isSelected ? AppColors.of(context).accentDimBg : null, // 选中背景色
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: Row(
                 children: [
@@ -227,7 +229,7 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
                       widget.name,
                       style: TextStyle(
                         fontSize: textScaler.scale(theme.fontBodyMedium?.size ?? 14),
-                        color: isSelected ? theme.brandNormalColor : null, // 选中文字颜色
+                        color: isSelected ? theme.brandNormalColor : AppColors.of(context).text1, // 选中文字颜色
                         fontWeight: isSelected ? FontWeight.w500 : null,
                       ),
                       maxLines: 1,
@@ -370,7 +372,7 @@ class _FileNode extends StatelessWidget {
           debugPrint('Clicked file: $path');
         },
         child: Container(
-          color: isSelected ? theme.brandColor1 : null,
+          color: isSelected ? AppColors.of(context).accentDimBg : null,
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
           child: Row(
             children: [
@@ -386,7 +388,7 @@ class _FileNode extends StatelessWidget {
                   name,
                   style: TextStyle(
                     fontSize: textScaler.scale(theme.fontBodyMedium?.size ?? 14),
-                    color: isSelected ? theme.brandNormalColor : (theme.fontBodyMedium != null ? theme.textColorPrimary : null),
+                    color: isSelected ? theme.brandNormalColor : AppColors.of(context).text1,
                     fontWeight: isSelected ? FontWeight.w500 : null,
                   ),
                   maxLines: 1,

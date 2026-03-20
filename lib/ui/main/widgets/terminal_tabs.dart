@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 
+import '../../../../setting/app_theme.dart';
 import '../models/terminal_session.dart';
 import '../ssh/ssh_terminal_view.dart';
 import '../../../ui/common/context_menu_trigger.dart';
@@ -165,10 +166,10 @@ class _TerminalTabsState extends State<TerminalTabs> with TickerProviderStateMix
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: TDTheme.of(context).whiteColor1,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: TDTheme.of(context).grayColor4,
+          color: AppColors.of(context).cardBorder,
           width: 1,
         ),
       ),

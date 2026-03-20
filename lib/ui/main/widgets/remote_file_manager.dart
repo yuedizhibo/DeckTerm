@@ -2,6 +2,7 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/material.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 
+import '../../../../setting/app_theme.dart';
 import '../../../function/dev-file/sftp_manager.dart';
 import '../models/terminal_session.dart';
 import '../../../../ui/common/context_menu_trigger.dart';
@@ -114,9 +115,9 @@ class _RemoteFileManagerState extends State<RemoteFileManager> {
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: TDTheme.of(context).whiteColor1,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: TDTheme.of(context).grayColor4, width: 1),
+        border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,6 +132,7 @@ class _RemoteFileManagerState extends State<RemoteFileManager> {
                   style: TextStyle(
                     fontSize: textScaler.scale(TDTheme.of(context).fontTitleMedium?.size ?? 16),
                     fontWeight: FontWeight.bold,
+                    color: AppColors.of(context).text1,
                   ),
                 ),
                 const Spacer(),
@@ -167,7 +169,7 @@ class _RemoteFileManagerState extends State<RemoteFileManager> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(TDIcons.link_unlink, size: 48, color: TDTheme.of(context).grayColor4),
+            Icon(TDIcons.link_unlink, size: 48, color: AppColors.of(context).text3),
             const SizedBox(height: 16),
             TDText(
               '未连接到设备',
@@ -339,7 +341,7 @@ class _SftpDirectoryNodeState extends State<_SftpDirectoryNode> {
               _toggleExpand();
             },
             child: Container(
-              color: isSelected ? theme.brandColor1 : null,
+              color: isSelected ? AppColors.of(context).accentDimBg : null,
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
@@ -360,7 +362,7 @@ class _SftpDirectoryNodeState extends State<_SftpDirectoryNode> {
                       widget.name,
                       style: TextStyle(
                         fontSize: textScaler.scale(theme.fontBodyMedium?.size ?? 14),
-                        color: isSelected ? theme.brandNormalColor : theme.textColorPrimary,
+                        color: isSelected ? theme.brandNormalColor : AppColors.of(context).text1,
                         fontWeight: isSelected ? FontWeight.w500 : null,
                       ),
                       maxLines: 1,
@@ -527,7 +529,7 @@ class _SftpFileNode extends StatelessWidget {
                   name,
                   style: TextStyle(
                     fontSize: textScaler.scale(theme.fontBodyMedium?.size ?? 14),
-                    color: theme.textColorPrimary,
+                    color: AppColors.of(context).text1,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

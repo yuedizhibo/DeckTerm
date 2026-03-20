@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 
+import '../../../../setting/app_theme.dart';
 import '../models/device_info.dart';
 
 /// 设备状态显示组件
@@ -70,10 +71,10 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: TDTheme.of(context).whiteColor1,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: TDTheme.of(context).grayColor4,
+          color: AppColors.of(context).cardBorder,
           width: 1,
         ),
       ),
@@ -84,7 +85,7 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: TDTheme.of(context).grayColor3)),
+              border: Border(bottom: BorderSide(color: AppColors.of(context).divider)),
             ),
             child: Row(
               children: [
@@ -93,6 +94,7 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
                   style: TextStyle(
                     fontSize: textScaler.scale(TDTheme.of(context).fontTitleMedium?.size ?? 16),
                     fontWeight: FontWeight.bold,
+                    color: AppColors.of(context).text1,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -162,7 +164,7 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: TDTheme.of(context).grayColor3,
+                    color: AppColors.of(context).divider,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: TDText(
@@ -261,6 +263,7 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
           style: TextStyle(
             fontSize: textScaler.scale(TDTheme.of(context).fontBodyMedium?.size ?? 14),
             fontWeight: FontWeight.w500,
+            color: AppColors.of(context).text1,
           ),
         ),
         const Spacer(),
@@ -292,8 +295,8 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
     bool isPlaceholder = false,
   }) {
     final baseFontSize = TDTheme.of(context).fontBodySmall?.size ?? 12;
-    final color = isPlaceholder 
-        ? TDTheme.of(context).grayColor4 
+    final color = isPlaceholder
+        ? AppColors.of(context).divider
         : _getProgressColor(context, usage);
     
     return Column(
@@ -307,7 +310,7 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
               style: TextStyle(
                 fontSize: textScaler.scale(baseFontSize),
                 fontWeight: FontWeight.normal,
-                color: isPlaceholder ? TDTheme.of(context).grayColor6 : null,
+                color: isPlaceholder ? TDTheme.of(context).grayColor6 : AppColors.of(context).text1,
               ),
             ),
             TDText(
@@ -327,7 +330,7 @@ class _DeviceStatusState extends State<DeviceStatus> with TickerProviderStateMix
           value: usage.clamp(0.0, 1.0),
           strokeWidth: textScaler.scale(20), // 加粗进度条，从 12 改为 20
           color: color,
-          backgroundColor: TDTheme.of(context).grayColor2,
+          backgroundColor: AppColors.of(context).divider,
         ),
       ],
     );
