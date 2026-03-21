@@ -360,7 +360,13 @@ class _WorkflowPageState extends State<WorkflowPage> with WindowListener {
   List<Widget> _buildFloatingPanels(Size stackSize) {
     final defs = <String, _PanelDef>{
       'connection': _PanelDef('连接管理', 540, 520, _keyConnection,
-        ConnectionManagerPanel(onConnect: (s) => _connectSession(s))),
+        ConnectionManagerPanel(onConnect: (s) {
+          _connectSession(s);
+          // 连接后关闭面板：直接触发关闭动画
+          if (_openPanels.contains('connection') && !_closingPanels.contains('connection')) {
+            setState(() => _closingPanels.add('connection'));
+          }
+        })),
       'transfer': _PanelDef('传输列表', 500, 440, _keyTransfer,
         const TransferListPanel()),
       'settings': _PanelDef('设置', 480, 520, _keySettings,

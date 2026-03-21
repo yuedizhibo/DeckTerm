@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../setting/app_theme.dart';
+import '../../setting/settings_manager.dart';
 
 /// 设置面板内容（非模态，嵌入 FloatingPanel / showPanelDialog 使用）
 class SettingsPanel extends StatefulWidget {
@@ -10,12 +11,23 @@ class SettingsPanel extends StatefulWidget {
 }
 
 class _SettingsPanelState extends State<SettingsPanel> {
-  // 临时本地状态，后续接入 SettingsManager
-  double _fontSize = 14.0;
-  bool _cursorBlink = true;
-  int _scrollbackLines = 10000;
-  int _keepAliveSeconds = 30;
-  bool _autoReconnect = true;
+  final _sm = SettingsManager.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _sm.addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    _sm.removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,22 +54,22 @@ class _SettingsPanelState extends State<SettingsPanel> {
           children: [
             _SliderRow(
               label: '字号',
-              value: _fontSize,
+              value: _sm.fontSize,
               min: 10, max: 24, divisions: 14,
-              valueLabel: '${_fontSize.round()}',
-              onChanged: (v) => setState(() => _fontSize = v),
+              valueLabel: '${_sm.fontSize.round()}',
+              onChanged: (v) => _sm.setFontSize(v),
             ),
             _SwitchRow(
               label: '光标闪烁',
-              value: _cursorBlink,
-              onChanged: (v) => setState(() => _cursorBlink = v),
+              value: _sm.cursorBlink,
+              onChanged: (v) => _sm.setCursorBlink(v),
             ),
             _SliderRow(
               label: '回滚行数',
-              value: _scrollbackLines.toDouble(),
+              value: _sm.scrollbackLines.toDouble(),
               min: 1000, max: 100000, divisions: 99,
-              valueLabel: _formatScrollback(_scrollbackLines),
-              onChanged: (v) => setState(() => _scrollbackLines = v.round()),
+              valueLabel: _formatScrollback(_sm.scrollbackLines),
+              onChanged: (v) => _sm.setScrollbackLines(v.round()),
             ),
           ],
         ),
@@ -70,15 +82,15 @@ class _SettingsPanelState extends State<SettingsPanel> {
           children: [
             _SliderRow(
               label: 'KeepAlive 间隔',
-              value: _keepAliveSeconds.toDouble(),
+              value: _sm.keepAliveSeconds.toDouble(),
               min: 0, max: 120, divisions: 24,
-              valueLabel: '${_keepAliveSeconds}s',
-              onChanged: (v) => setState(() => _keepAliveSeconds = v.round()),
+              valueLabel: '${_sm.keepAliveSeconds}s',
+              onChanged: (v) => _sm.setKeepAliveSeconds(v.round()),
             ),
             _SwitchRow(
               label: '断线自动重连',
-              value: _autoReconnect,
-              onChanged: (v) => setState(() => _autoReconnect = v),
+              value: _sm.autoReconnect,
+              onChanged: (v) => _sm.setAutoReconnect(v),
             ),
           ],
         ),

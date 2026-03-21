@@ -33,8 +33,6 @@ class _TcpNoDelaySocket implements SSHSocket {
     Duration? timeout,
   }) async {
     final socket = await Socket.connect(host, port, timeout: timeout);
-    // TCP_NODELAY = true：禁用 Nagle 算法，每次 write 立即触发 TCP 发送，
-    // 消除人机交互型 SSH 会话中 Nagle + 延迟 ACK 叠加导致的 ~500ms 延迟。
     socket.setOption(SocketOption.tcpNoDelay, true);
     return _TcpNoDelaySocket._(socket);
   }
@@ -61,6 +59,7 @@ class SshManager {
   final TerminalSession session;
   SSHClient? _client;
   SSHSession? _shell;
+  bool _disposed = false;
 
   // 增量 UTF-8 解码器：allowMalformed 防止流式数据在字节序列边界被截断时抛异常
   final _stdoutDecoder = Utf8Decoder(allowMalformed: true);
@@ -85,14 +84,41 @@ class SshManager {
         timeout: const Duration(seconds: 10),
       );
 
-      _client = SSHClient(
-        socket,
-        username: session.username ?? 'root',
-        onPasswordRequest: () => session.password,
-      );
+      // 根据认证方式创建客户端
+      if (session.privateKeyPath != null && session.privateKeyPath!.isNotEmpty) {
+        // 私钥认证
+        try {
+          final keyFile = File(session.privateKeyPath!);
+          final keyContent = await keyFile.readAsString();
+          final keyPairs = SSHKeyPair.fromPem(keyContent);
+          _client = SSHClient(
+            socket,
+            username: session.username ?? 'root',
+            identities: [...keyPairs],
+          );
+        } catch (e) {
+          _outputController.add('Failed to load private key: $e\r\n');
+          socket.destroy();
+          return;
+        }
+      } else {
+        // 密码认证
+        _client = SSHClient(
+          socket,
+          username: session.username ?? 'root',
+          onPasswordRequest: () => session.password,
+        );
+      }
 
       _outputController.add('Connected. Authenticating...\r\n');
-      await _client!.authenticated;
+
+      // 认证超时保护
+      await _client!.authenticated.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException('Authentication timed out'),
+      );
+
+      if (_disposed) return;
       _outputController.add('Authenticated.\r\n');
 
       _shell = await _client!.shell(
@@ -104,6 +130,7 @@ class SshManager {
       );
 
       _shell!.stdout.listen((data) {
+        if (_disposed) return;
         final decoded = _stdoutDecoder.convert(data);
         debugPrint('[SSH-Output] recv ${data.length}B '
             'at ${DateTime.now().millisecondsSinceEpoch}ms');
@@ -111,30 +138,37 @@ class SshManager {
       });
 
       _shell!.stderr.listen((data) {
+        if (_disposed) return;
         _outputController.add(_stderrDecoder.convert(data));
       });
 
       _client!.done.then((_) {
+        if (_disposed) return;
         _outputController.add('\r\nConnection closed.\r\n');
       });
+    } on TimeoutException {
+      _outputController.add('Error: Authentication timed out\r\n');
+      _client?.close();
+      _client = null;
     } catch (e) {
       _outputController.add('Error: $e\r\n');
     }
   }
 
   void write(String data) {
-    if (_shell != null) {
-      debugPrint('[SSH-Write] send at ${DateTime.now().millisecondsSinceEpoch}ms '
-          '"${data.replaceAll('\r', '\\r').replaceAll('\n', '\\n')}"');
-      _shell!.write(Uint8List.fromList(utf8.encode(data)));
-    }
+    if (_disposed || _shell == null) return;
+    debugPrint('[SSH-Write] send at ${DateTime.now().millisecondsSinceEpoch}ms '
+        '"${data.replaceAll('\r', '\\r').replaceAll('\n', '\\n')}"');
+    _shell!.write(Uint8List.fromList(utf8.encode(data)));
   }
 
   void resize(int width, int height) {
+    if (_disposed) return;
     _shell?.resizeTerminal(width, height, width * 8, height * 16);
   }
 
   void dispose() {
+    _disposed = true;
     _shell?.close();
     _client?.close();
     _outputController.close();

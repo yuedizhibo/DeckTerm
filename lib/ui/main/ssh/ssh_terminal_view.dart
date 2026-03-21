@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 
 import '../../../function/ssh/ssh_manager.dart';
+import '../../../setting/settings_manager.dart';
 import '../models/terminal_session.dart';
 import '../../../function/monitor/device_monitor.dart';
 // [Android 专用] 软键盘输入层，仅在 Platform.isAndroid 时使用
@@ -154,7 +155,7 @@ class _SshTerminalViewState extends State<SshTerminalView>
   void initState() {
     super.initState();
 
-    _terminal = Terminal(maxLines: 10000);
+    _terminal = Terminal(maxLines: SettingsManager.instance.scrollbackLines);
     _sshManager = SshManager(session: widget.session);
     DeviceMonitor().addDevice(widget.session);
 
@@ -163,6 +164,7 @@ class _SshTerminalViewState extends State<SshTerminalView>
     _sshManager.output.listen(_terminal.write);
 
     _focusNode.addListener(_onFocusChanged);
+    SettingsManager.instance.addListener(_onSettingsChanged);
 
     _connect();
   }
@@ -170,6 +172,7 @@ class _SshTerminalViewState extends State<SshTerminalView>
   @override
   void dispose() {
     _blinkTimer?.cancel();
+    SettingsManager.instance.removeListener(_onSettingsChanged);
     _focusNode.removeListener(_onFocusChanged);
     _focusNode.dispose();
     _terminalController.dispose();
@@ -182,12 +185,24 @@ class _SshTerminalViewState extends State<SshTerminalView>
     await _sshManager.connect();
   }
 
+  void _onSettingsChanged() {
+    if (mounted) setState(() {});
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // 光标闪烁（所有平台共用）
   // ─────────────────────────────────────────────────────────────────────
 
   void _onFocusChanged() {
-    _focusNode.hasFocus ? _startBlinking() : _stopBlinking();
+    if (_focusNode.hasFocus) {
+      SettingsManager.instance.cursorBlink ? _startBlinking() : _stopBlinking();
+      // 即使不闪烁，聚焦时也要显示白色光标
+      if (!SettingsManager.instance.cursorBlink && mounted) {
+        setState(() => _cursorColor = _kCursorWhite);
+      }
+    } else {
+      _stopBlinking();
+    }
   }
 
   /// 获得焦点 → 立即显示白色光标，随后每 530ms 白/灰交替。
@@ -316,6 +331,7 @@ class _SshTerminalViewState extends State<SshTerminalView>
       focusNode: _focusNode,
       autofocus: !Platform.isAndroid,
       hardwareKeyboardOnly: true,
+      textStyle: TerminalStyle(fontSize: SettingsManager.instance.fontSize),
       onKeyEvent: (_, event) => _handleKeyEvent(event)
           ? KeyEventResult.handled
           : KeyEventResult.ignored,

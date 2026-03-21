@@ -393,7 +393,7 @@ class _SmallIconBtnState extends State<_SmallIconBtn> {
               widget.icon,
               size: 15,
               color: _hovered
-                  ? (widget.hoverColor ?? Colors.white60)
+                  ? (widget.hoverColor ?? AppColors.of(context).text2)
                   : AppColors.of(context).text3,
             ),
           ),
@@ -421,7 +421,7 @@ class _ActionChipState extends State<_ActionChip> {
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = widget.isPrimary ? AppColors.of(context).accent : Colors.white;
+    final baseColor = widget.isPrimary ? AppColors.of(context).accent : AppColors.of(context).text2;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -444,14 +444,14 @@ class _ActionChipState extends State<_ActionChip> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(widget.icon, size: 14, color: widget.isPrimary ? baseColor : Colors.white54),
+              Icon(widget.icon, size: 14, color: widget.isPrimary ? baseColor : AppColors.of(context).text3),
               const SizedBox(width: 4),
               Text(
                 widget.label,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: widget.isPrimary ? baseColor : Colors.white54,
+                  color: widget.isPrimary ? baseColor : AppColors.of(context).text3,
                 ),
               ),
             ],

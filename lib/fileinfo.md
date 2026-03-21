@@ -11,10 +11,10 @@
 | 层级 | 文件数 | 说明 |
 |------|--------|------|
 | 入口 | 1 | `main.dart` |
-| 功能层 (function/) | 9 | 纯业务逻辑，无 UI |
-| 设置层 (setting/) | 1 | 主题系统 |
-| UI 层 (ui/) | 20 | 界面展示 |
-| **合计** | **31** | |
+| 功能层 (function/) | 10 | 纯业务逻辑，无 UI（含 VNC） |
+| 设置层 (setting/) | 2 | 主题系统 + 设置管理 |
+| UI 层 (ui/) | 21 | 界面展示（含 VNC 桌面视图） |
+| **合计** | **34** | |
 
 ## 详细文档索引
 
@@ -39,6 +39,11 @@
   - `ThemeProvider`：全局主题状态单例（`ChangeNotifier`），持久化到 `SharedPreferences`，支持深色/浅色切换。
   - `buildAppTheme()`：根据 `Brightness` 生成完整 `ThemeData`。
   - 所有 UI 组件通过 `AppColors.of(context)` 获取当前主题色，消除硬编码色值。
+
+- **`settings_manager.dart`** — 全局设置管理器。 [`详细文档`](../docs/setting/settings_manager.md)
+  - `SettingsManager`：ChangeNotifier 单例，持久化到 `SharedPreferences`。
+  - 管理终端字号、光标闪烁、回滚行数、KeepAlive 间隔、断线自动重连等设置。
+  - 所有 setter 方法自动通知监听者并异步持久化。
 
 ---
 
@@ -119,6 +124,18 @@
   - `failTask()`：标记失败并记录错误信息。
   - `removeTask(taskId)`：手动移除单条任务。
   - `clearCompleted()`：批量移除所有已完成或失败的任务。
+
+### `lib/function/vnc/` — VNC 远程桌面
+
+- **`vnc_manager.dart`** — VNC 连接管理器。 [`详细文档`](../docs/function/vnc/vnc_manager.md)
+  - 实现 RFB 3.8 协议最小子集：版本握手、安全协商、VNC 认证（DES challenge-response）、帧缓冲更新。
+  - 支持 Raw 和 CopyRect 编码，32bpp BGRA 像素格式。
+  - `connect()`：完成 RFB 握手、认证、ServerInit，分配帧缓冲。
+  - `sendKeyEvent(keysym, down)`：发送键盘事件。
+  - `sendPointerEvent(x, y, buttonMask)`：发送鼠标/触摸事件。
+  - `requestFrameUpdate({incremental})`：请求帧缓冲增量/完整更新。
+  - 通过 `statusStream` 和 `frameStream` 广播状态变化和帧更新。
+  - 内含最小 DES 实现（VNC Authentication 专用）。
 
 ---
 
@@ -218,6 +235,16 @@
   - **光标闪烁**：聚焦时白/灰 530ms 交替，失焦时灰色描边。
   - **Android 软键盘**：通过 `if (Platform.isAndroid)` 挂载 `SshKeyboardOverlay`。
   - `AutomaticKeepAliveClientMixin`：标签页切换时保持终端后台活跃。
+  - 集成 `SettingsManager`：字号、光标闪烁、回滚行数实时响应设置变更。
+
+#### `lib/ui/main/vnc/` — VNC 桌面视图
+
+- **`vnc_desktop_view.dart`** — VNC 远程桌面渲染视图。 [`详细文档`](../docs/ui/main/vnc/vnc_desktop_view.md)
+  - 基于 `VncManager` 实现完整 VNC 桌面显示，使用 `CustomPainter` + `ui.Image` 渲染帧缓冲。
+  - 键盘输入：物理键盘 → X11 keysym 映射 → VNC `sendKeyEvent`。
+  - 鼠标/触摸：`Listener` 处理点击/移动/滚轮，Android 长按模拟右键。
+  - 等比缩放居中显示，连接状态 UI（连接中/失败/重试）。
+  - `AutomaticKeepAliveClientMixin` 保持标签页切换时后台活跃。
 
 #### `lib/ui/main/widgets/` — 主界面组件
 

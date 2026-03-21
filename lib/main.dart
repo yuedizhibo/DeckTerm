@@ -6,6 +6,7 @@ import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'setting/app_theme.dart';
+import 'setting/settings_manager.dart';
 import 'ui/main/workflow.dart';
 
 void main() async {
@@ -14,8 +15,9 @@ void main() async {
   // 禁用 TDesign 的字体强制居中功能，修复 Flutter 3.16+ 下的偏移问题
   kTextForceVerticalCenterEnable = false;
 
-  // 加载持久化主题偏好
+  // 加载持久化偏好
   await ThemeProvider.instance.load();
+  await SettingsManager.instance.load();
 
   // Windows 自定义标题栏初始化
   if (Platform.isWindows) {

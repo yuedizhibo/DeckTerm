@@ -280,6 +280,7 @@ class _PanelCloseButtonState extends State<_PanelCloseButton> {
 // ═══════════════════════════════════════════════════════════════════
 
 /// 在 Android 上用半透明 Dialog 包装面板内容。
+/// 进场：从底部微滑上来 + 缩放 + 淡入；退场：反向。
 /// 返回的 Future 在关闭时完成。
 Future<T?> showPanelDialog<T>({
   required BuildContext context,
@@ -293,60 +294,74 @@ Future<T?> showPanelDialog<T>({
     barrierDismissible: true,
     barrierLabel: title,
     barrierColor: Colors.black54,
-    transitionDuration: const Duration(milliseconds: 280),
-    transitionBuilder: (context, anim, secondaryAnim, child) {
-      final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
-      return ScaleTransition(
-        scale: Tween<double>(begin: 0.85, end: 1.0).animate(curved),
-        child: FadeTransition(opacity: curved, child: child),
+    transitionDuration: const Duration(milliseconds: 300),
+    transitionBuilder: (ctx, anim, secondaryAnim, dialogChild) {
+      final curved = CurvedAnimation(
+        parent: anim,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.06),
+          end: Offset.zero,
+        ).animate(curved),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+          child: FadeTransition(opacity: curved, child: dialogChild),
+        ),
       );
     },
-    pageBuilder: (context, anim, secondaryAnim) {
-      final c = AppColors.of(context);
-      final size = MediaQuery.of(context).size;
+    pageBuilder: (ctx, anim, secondaryAnim) {
+      final c = AppColors.of(ctx);
+      final size = MediaQuery.of(ctx).size;
       final isSmall = size.width < 600;
       final w = isSmall ? size.width * 0.93 : width;
       final h = isSmall ? size.height * 0.85 : height;
       return Center(
-        child: Container(
-          width: w,
-          height: h,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: c.panelBg,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: c.cardBorder),
-          ),
-          child: Column(
-            children: [
-              Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: c.titleBar,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(14),
-                    topRight: Radius.circular(14),
-                  ),
-                  border: Border(bottom: BorderSide(color: c.divider)),
-                ),
-                child: Row(
-                  children: [
-                    Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.text1)),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        width: 24, height: 24,
-                        decoration: BoxDecoration(color: c.hoverBg, borderRadius: BorderRadius.circular(6)),
-                        child: Icon(Icons.close_rounded, size: 14, color: c.text2),
-                      ),
+        // Material 祖先：内部的 TextField、Switch、InkWell 等必须有 Material
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            width: w,
+            height: h,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: c.panelBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.cardBorder),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: c.titleBar,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      topRight: Radius.circular(14),
                     ),
-                  ],
+                    border: Border(bottom: BorderSide(color: c.divider)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.text1)),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => Navigator.of(ctx).pop(),
+                        child: Container(
+                          width: 24, height: 24,
+                          decoration: BoxDecoration(color: c.hoverBg, borderRadius: BorderRadius.circular(6)),
+                          child: Icon(Icons.close_rounded, size: 14, color: c.text2),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(child: child),
-            ],
+                Expanded(child: child),
+              ],
+            ),
           ),
         ),
       );
