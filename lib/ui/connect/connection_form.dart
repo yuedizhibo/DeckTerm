@@ -437,6 +437,7 @@ class _TypeSelector extends StatelessWidget {
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 12),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(8),
@@ -447,6 +448,7 @@ class _TypeSelector extends StatelessWidget {
           value: value,
           isExpanded: true,
           dropdownColor: c.menuBg,
+          borderRadius: BorderRadius.circular(10),
           style: TextStyle(fontSize: 13, color: c.text1),
           icon: Icon(Icons.expand_more_rounded, size: 18, color: c.text3),
           items: [
@@ -494,6 +496,7 @@ class _AuthMethodSelector extends StatelessWidget {
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 12),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(8),
@@ -504,6 +507,7 @@ class _AuthMethodSelector extends StatelessWidget {
           value: value,
           isExpanded: true,
           dropdownColor: c.menuBg,
+          borderRadius: BorderRadius.circular(10),
           style: TextStyle(fontSize: 13, color: c.text1),
           icon: Icon(Icons.expand_more_rounded, size: 18, color: c.text3),
           items: [
