@@ -362,10 +362,12 @@ class _WorkflowPageState extends State<WorkflowPage> with WindowListener {
       'connection': _PanelDef('连接管理', 540, 520, _keyConnection,
         ConnectionManagerPanel(onConnect: (s) {
           _connectSession(s);
-          // 连接后关闭面板：直接触发关闭动画
-          if (_openPanels.contains('connection') && !_closingPanels.contains('connection')) {
-            setState(() => _closingPanels.add('connection'));
-          }
+          // 连接后关闭面板：延迟一帧避免与 _connectSession 的 setState 冲突
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _openPanels.contains('connection') && !_closingPanels.contains('connection')) {
+              setState(() => _closingPanels.add('connection'));
+            }
+          });
         })),
       'transfer': _PanelDef('传输列表', 500, 440, _keyTransfer,
         const TransferListPanel()),

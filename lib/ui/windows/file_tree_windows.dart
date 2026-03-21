@@ -155,21 +155,63 @@ class _DirectoryNode extends StatefulWidget {
   State<_DirectoryNode> createState() => _DirectoryNodeState();
 }
 
-class _DirectoryNodeState extends State<_DirectoryNode> {
+class _DirectoryNodeState extends State<_DirectoryNode>
+    with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
   bool _hasLoaded = false;
   List<FileSystemEntity> _children = [];
   bool _isLoading = false;
 
+  late final AnimationController _animController;
+  late final Animation<double> _expandAnimation;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _arrowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 350), // 会被 _adaptDuration 覆盖
+      reverseDuration: const Duration(milliseconds: 220),
+      vsync: this,
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutQuart,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: const Interval(0.15, 1.0, curve: Curves.easeOutCubic),
+      reverseCurve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+    );
+    _arrowAnimation = Tween<double>(begin: 0, end: 0.25).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  /// 根据子项数量动态调整展开时长，内容越多越慢，保持视觉节奏一致
+  void _adaptDuration(int itemCount) {
+    // 5 个以下 300ms，每多 5 个加 50ms，上限 700ms
+    final ms = (300 + (itemCount / 5).floor() * 50).clamp(300, 700);
+    _animController.duration = Duration(milliseconds: ms);
+  }
+
   Future<void> _toggleExpand() async {
     if (_isExpanded) {
+      _adaptDuration(_children.length);
+      _animController.reverse();
       setState(() => _isExpanded = false);
       return;
     }
 
-    setState(() {
-      _isExpanded = true;
-    });
+    setState(() => _isExpanded = true);
 
     if (!_hasLoaded) {
       setState(() => _isLoading = true);
@@ -182,6 +224,8 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
         });
       }
     }
+    _adaptDuration(_children.length);
+    _animController.forward();
   }
 
   @override
@@ -208,10 +252,13 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: Row(
                 children: [
-                  Icon(
-                    _isExpanded ? TDIcons.caret_down_small : TDIcons.caret_right_small,
-                    size: textScaler.scale(16),
-                    color: theme.grayColor6,
+                  RotationTransition(
+                    turns: _arrowAnimation,
+                    child: Icon(
+                      TDIcons.caret_right_small,
+                      size: textScaler.scale(16),
+                      color: theme.grayColor6,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   Icon(
@@ -241,43 +288,48 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
             ),
           ),
         ),
-        if (_isExpanded)
-          if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
-              child: TDText(
-                '加载中...',
-                style: TextStyle(
-                  fontSize: textScaler.scale(12),
-                  color: theme.grayColor6,
-                ),
-              ),
-            )
-          else if (_children.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
-              child: TDText(
-                '(空)',
-                style: TextStyle(
-                  fontSize: textScaler.scale(12),
-                  color: theme.grayColor5,
-                ),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(left: 16),
-              child: Column(
-                children: _children.map((entity) {
-                  final name = entity.path.split(Platform.pathSeparator).last;
-                  if (entity is Directory) {
-                    return _DirectoryNode(path: entity.path, name: name);
-                  } else {
-                    return _FileNode(path: entity.path, name: name);
-                  }
-                }).toList(),
-              ),
-            ),
+        SizeTransition(
+          sizeFactor: _expandAnimation,
+          axisAlignment: -1,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: _isLoading
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
+                    child: TDText(
+                      '加载中...',
+                      style: TextStyle(
+                        fontSize: textScaler.scale(12),
+                        color: theme.grayColor6,
+                      ),
+                    ),
+                  )
+                : _children.isEmpty && _hasLoaded
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
+                        child: TDText(
+                          '(空)',
+                          style: TextStyle(
+                            fontSize: textScaler.scale(12),
+                            color: theme.grayColor5,
+                          ),
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child: Column(
+                          children: _children.map((entity) {
+                            final name = entity.path.split(Platform.pathSeparator).last;
+                            if (entity is Directory) {
+                              return _DirectoryNode(path: entity.path, name: name);
+                            } else {
+                              return _FileNode(path: entity.path, name: name);
+                            }
+                          }).toList(),
+                        ),
+                      ),
+          ),
+        ),
       ],
     );
   }
@@ -319,6 +371,7 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
       ],
     ).then((value) async {
       if (value == 'refresh') {
+        _animController.reset();
         setState(() {
           _isExpanded = false;
           _hasLoaded = false;
@@ -330,6 +383,7 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
           await clipboard.paste(widget.path, FileSourceType.local);
           if (context.mounted) {
             TDToast.showSuccess('粘贴成功', context: context);
+            _animController.reset();
             setState(() {
               _isExpanded = false;
               _hasLoaded = false;
